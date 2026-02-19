@@ -1,0 +1,25 @@
+# Node modules - huge folder, not needed
+feedback-app/node_modules/
+admin-dashboard/node_modules/
+
+# React build folders
+feedback-app/build/
+admin-dashboard/build/
+
+# Java build folder
+backend/target/
+
+# Environment and secret files
+*.env
+.env.local
+
+# VS Code settings
+.vscode/
+
+# Windows files
+Thumbs.db
+desktop.ini
+
+# Maven wrapper (optional)
+!**/mvnw
+!**/mvnw.cmd
