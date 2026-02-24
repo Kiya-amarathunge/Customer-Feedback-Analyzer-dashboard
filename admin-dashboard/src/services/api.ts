@@ -41,6 +41,7 @@ const createApiInstance = (): AxiosInstance => {
 
 const api = createApiInstance();
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<AuthToken> => {
     const res = await api.post<AuthToken>('/auth/login', credentials);
@@ -52,55 +53,83 @@ export const authService = {
   },
 };
 
+// ── Analytics ─────────────────────────────────────────────────────────────────
 export const analyticsService = {
+  // Summary is always global
   getSummary: async (): Promise<AnalyticsData> => {
     const res = await api.get<AnalyticsData>('/analytics/summary');
     return res.data;
   },
-  getTrends: async (months: number = 12): Promise<TrendDataPoint[]> => {
-    const res = await api.get<TrendDataPoint[]>(`/analytics/trends?months=${months}`);
+
+  // Trends — supports fromMonth, toMonth (YYYY-MM format), and optional branchId
+  getTrends: async (fromMonth?: string, toMonth?: string, branchId?: string): Promise<TrendDataPoint[]> => {
+    const params = new URLSearchParams();
+    if (fromMonth) params.append('fromMonth', fromMonth);
+    if (toMonth)   params.append('toMonth',   toMonth);
+    if (branchId)  params.append('branchId',  branchId);
+    const res = await api.get<TrendDataPoint[]>(`/analytics/trends?${params}`);
     return res.data;
   },
-  getRatingDistribution: async (): Promise<RatingDistribution[]> => {
-    const res = await api.get<RatingDistribution[]>('/analytics/rating-distribution');
+
+  // Rating distribution — optional branchId filter
+  getRatingDistribution: async (branchId?: string): Promise<RatingDistribution[]> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    const res = await api.get<RatingDistribution[]>(`/analytics/rating-distribution?${params}`);
     return res.data;
   },
+
+  // Branch performance — always all branches
   getBranchPerformance: async (): Promise<BranchPerformance[]> => {
     const res = await api.get<BranchPerformance[]>('/analytics/branch-performance');
     return res.data;
   },
-  getServiceDistribution: async (): Promise<ServiceDistribution[]> => {
-    const res = await api.get<ServiceDistribution[]>('/analytics/service-distribution');
+
+  // Service distribution — optional branchId filter
+  getServiceDistribution: async (branchId?: string): Promise<ServiceDistribution[]> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    const res = await api.get<ServiceDistribution[]>(`/analytics/service-distribution?${params}`);
     return res.data;
   },
 };
 
+// ── Feedback ──────────────────────────────────────────────────────────────────
 export const feedbackService = {
+  // Get all feedback with filtering — branch, serviceType, rating, search, page, size
   getAll: async (filters: FilterParams): Promise<PagedResponse<FeedbackEntry>> => {
     const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, val]) => {
-      if (val !== undefined && val !== '') params.append(key, String(val));
-    });
+    if (filters.branch)      params.append('branch',      filters.branch);
+    if (filters.serviceType) params.append('serviceType', filters.serviceType);
+    if (filters.rating)      params.append('rating',      filters.rating);
+    if (filters.search)      params.append('search',      filters.search);
+    if (filters.page !== undefined) params.append('page', String(filters.page));
+    if (filters.size !== undefined) params.append('size', String(filters.size));
     const res = await api.get<PagedResponse<FeedbackEntry>>(`/responses?${params}`);
     return res.data;
   },
+
   getById: async (id: string): Promise<FeedbackEntry> => {
     const res = await api.get<FeedbackEntry>(`/responses/${id}`);
     return res.data;
   },
+
   exportCsv: async (filters: FilterParams): Promise<Blob> => {
     const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, val]) => {
-      if (val !== undefined && val !== '') params.append(key, String(val));
-    });
+    if (filters.branch)      params.append('branch',      filters.branch);
+    if (filters.serviceType) params.append('serviceType', filters.serviceType);
+    if (filters.rating)      params.append('rating',      filters.rating);
+    if (filters.search)      params.append('search',      filters.search);
     const res = await api.get(`/responses/export?${params}`, { responseType: 'blob' });
     return res.data;
   },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/responses/${id}`);
   },
 };
 
+// ── Branches ──────────────────────────────────────────────────────────────────
 export const branchService = {
   getAll: async () => {
     const res = await api.get('/branches');

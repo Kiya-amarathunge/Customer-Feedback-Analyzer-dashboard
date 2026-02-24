@@ -1,5 +1,7 @@
 package com.lolc.feedback.controller;
 
+
+
 import com.lolc.feedback.dto.FeedbackRequestDto;
 import com.lolc.feedback.dto.FeedbackResponseDto;
 import com.lolc.feedback.service.FeedbackService;
@@ -19,7 +21,7 @@ public class FeedbackController {
     @Autowired
     private FeedbackService feedbackService;
 
-    // Public endpoint - submit feedback
+    // ── Public: submit feedback ────────────────────────────────────────────────
     @PostMapping("/feedback")
     public ResponseEntity<?> submitFeedback(
             @Valid @RequestBody FeedbackRequestDto request,
@@ -40,40 +42,47 @@ public class FeedbackController {
         }
     }
 
-    // Protected endpoints - get responses (admin only)
+    // ── Admin: list responses with full filtering ──────────────────────────────
+    // Supports: branch (branchId), serviceType, rating, search, page, size
     @GetMapping("/responses")
     public ResponseEntity<Page<FeedbackResponseDto>> getAllFeedback(
             @RequestParam(required = false) String branch,
             @RequestParam(required = false) String serviceType,
             @RequestParam(required = false) Integer rating,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(feedbackService.getAllFeedback(branch, serviceType, rating, page, size));
+        return ResponseEntity.ok(
+                feedbackService.getAllFeedback(branch, serviceType, rating, search, page, size)
+        );
     }
 
+    // ── Admin: get single response ─────────────────────────────────────────────
     @GetMapping("/responses/{id}")
     public ResponseEntity<FeedbackResponseDto> getFeedbackById(@PathVariable String id) {
         return ResponseEntity.ok(feedbackService.getFeedbackById(id));
     }
 
+    // ── Admin: export CSV ──────────────────────────────────────────────────────
     @GetMapping("/responses/export")
     public ResponseEntity<String> exportCsv(
             @RequestParam(required = false) String branch,
-            @RequestParam(required = false) String serviceType) {
-        // Generate CSV - simplified version
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) String search) {
+
         StringBuilder csv = new StringBuilder();
         csv.append("Date,Time,Customer Service,Branch Environment,Recommendation,Overall,Branch,Service,Comments\n");
 
-        Page<FeedbackResponseDto> page = feedbackService.getAllFeedback(branch, serviceType, null, 0, 10000);
-        page.getContent().forEach(f -> {
-            csv.append(String.format("%s,%s,%d,%d,%d,%d,%s,%s,\"%s\"\n",
-                    f.getDate(), f.getTime(),
-                    f.getCustomerService(), f.getBranchEnvironment(), f.getRecommendation(),
-                    f.getOverallRating(), f.getBranch(),
-                    f.getServiceType() != null ? f.getServiceType() : "",
-                    f.getAdditionalComments() != null ? f.getAdditionalComments().replace("\"", "\"\"") : ""
-            ));
-        });
+        Page<FeedbackResponseDto> allPages = feedbackService.getAllFeedback(branch, serviceType, rating, search, 0, 100000);
+        allPages.getContent().forEach(f -> csv.append(String.format("%s,%s,%d,%d,%d,%d,%s,%s,\"%s\"\n",
+                f.getDate(), f.getTime(),
+                f.getCustomerService(), f.getBranchEnvironment(),
+                f.getRecommendation(), f.getOverallRating(),
+                f.getBranch(),
+                f.getServiceType() != null ? f.getServiceType() : "",
+                f.getAdditionalComments() != null ? f.getAdditionalComments().replace("\"", "\"\"") : ""
+        )));
 
         return ResponseEntity.ok()
                 .header("Content-Type", "text/csv")
@@ -81,9 +90,10 @@ public class FeedbackController {
                 .body(csv.toString());
     }
 
+    // ── Helper ─────────────────────────────────────────────────────────────────
     private String getClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
