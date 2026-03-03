@@ -272,11 +272,13 @@ const DashboardPage: React.FC = () => {
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   });
 
-  // Card 2 — Rating branch filter
-  const [ratingBranchId, setRatingBranchId] = useState('');
-
-  // Card 3 — NPS branch filter
-  const [npsBranchId, setNpsBranchId] = useState('');
+  // Shared branch filter — used by all analytics panels
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  // Keep these as aliases so existing JSX still compiles
+  const ratingBranchId = selectedBranchId;
+  const setRatingBranchId = setSelectedBranchId;
+  const npsBranchId = selectedBranchId;
+  const setNpsBranchId = setSelectedBranchId;
 
   // Card 4 — Branch performance filters + recent feedback
   const [branchTableSearch, setBranchTableSearch] = useState('');
@@ -288,18 +290,13 @@ const DashboardPage: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      const [s, t, r, b, sd] = await Promise.all([
+      // Summary and branch performance are always global
+      const [s, b] = await Promise.all([
         analyticsService.getSummary(),
-        analyticsService.getTrends(trendFromMonth, trendToMonth),
-        analyticsService.getRatingDistribution(),
         analyticsService.getBranchPerformance(),
-        analyticsService.getServiceDistribution(),
       ]);
       setSummary(s);
-      setTrends(t);
-      setRatingDist(r);
       setBranches(b);
-      setServiceDist(sd);
     } catch {
       setError('Cannot connect to backend. Make sure Spring Boot is running on port 8080.');
     } finally {
@@ -307,18 +304,50 @@ const DashboardPage: React.FC = () => {
     }
   }, []);
 
+  // Trends reload when date range or branch filter changes
+  const loadTrends = useCallback(async () => {
+    try {
+      const t = await analyticsService.getTrends(trendFromMonth, trendToMonth, selectedBranchId || undefined);
+      setTrends(t);
+    } catch { setTrends([]); }
+  }, [trendFromMonth, trendToMonth, selectedBranchId]);
+
+  // Rating dist reloads when branch filter changes
+  const loadRatingDist = useCallback(async () => {
+    try {
+      const r = await analyticsService.getRatingDistribution(selectedBranchId || undefined);
+      setRatingDist(r);
+    } catch { setRatingDist([]); }
+  }, [selectedBranchId]);
+
+  // Service dist reloads when branch filter changes
+  const loadServiceDist = useCallback(async () => {
+    try {
+      const sd = await analyticsService.getServiceDistribution(selectedBranchId || undefined);
+      setServiceDist(sd);
+    } catch { setServiceDist([]); }
+  }, [selectedBranchId]);
+
   const loadFeedback = useCallback(async () => {
     try {
-      const res = await feedbackService.getAll({ ...filters, search: searchTerm, page: currentPage - 1 });
+      const res = await feedbackService.getAll({
+        ...filters,
+        branch: selectedBranchId || filters.branch,
+        search: searchTerm,
+        page: currentPage - 1,
+      });
       setFeedbackList(res.content || []);
       setTotalEntries(res.totalElements || 0);
     } catch {
       setFeedbackList([]);
       setTotalEntries(0);
     }
-  }, [filters, searchTerm, currentPage]);
+  }, [filters, searchTerm, currentPage, selectedBranchId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadTrends(); }, [loadTrends]);
+  useEffect(() => { loadRatingDist(); }, [loadRatingDist]);
+  useEffect(() => { loadServiceDist(); }, [loadServiceDist]);
   useEffect(() => { loadFeedback(); }, [loadFeedback]);
 
   const handleCardClick = (card: string) => setActiveCard(prev => prev === card ? null : card);
@@ -333,7 +362,6 @@ const DashboardPage: React.FC = () => {
       a.download = `LOLC_Feedback_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
     } catch {
-
       const header = 'Date,Time,Customer Service,Branch Environment,Recommendation,Overall,Branch,Service,Comments\n';
       const rows = feedbackList.map(f =>
         `${f.date},${f.time},${f.customerService},${f.branchEnvironment},${f.recommendation},${f.overallRating},${f.branch},${f.serviceType||''},"${f.additionalComments||''}"`
@@ -358,15 +386,9 @@ const DashboardPage: React.FC = () => {
     return true; // backend handles filtering when we pass date params; this is client filter fallback
   });
 
-  // Rating dist filtered by selected branch
-  const displayedRatingDist = ratingBranchId
-    ? ratingDist.map(d => ({ ...d, category: `${d.category} — ${branches.find(b=>b.branchId===ratingBranchId)?.branchName||''}` }))
-    : ratingDist;
-
-  // Service dist filtered by selected branch for NPS panel
-  const displayedServiceDist = npsBranchId
-    ? serviceDist // backend would filter; client shows all with branch label
-    : serviceDist;
+  // These are now driven by backend via loadRatingDist and loadServiceDist
+  const displayedRatingDist = ratingDist;
+  const displayedServiceDist = serviceDist;
 
   // Branch table filtering and performer range
   const searchedBranches = branches.filter(b =>
@@ -432,7 +454,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-            <button onClick={loadData} style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'7px', color:'#F4F4F4', padding:'5px 11px', fontSize:'12px', cursor:'pointer', fontFamily:"'Inter', sans-serif" }}>🔄 Refresh</button>
+            <button onClick={() => { loadData(); loadTrends(); loadRatingDist(); loadServiceDist(); loadFeedback(); }} style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'7px', color:'#F4F4F4', padding:'5px 11px', fontSize:'12px', cursor:'pointer', fontFamily:"'Inter', sans-serif" }}>🔄 Refresh</button>
             <div style={{ background:'rgba(255,255,255,0.1)', borderRadius:'20px', padding:'4px 11px', color:'#F4F4F4', fontSize:'12px' }}>{username}</div>
             <button onClick={logout} style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'7px', color:'#F4F4F4', padding:'5px 11px', fontSize:'12px', cursor:'pointer', fontFamily:"'Inter', sans-serif" }}>Logout</button>
           </div>
@@ -447,7 +469,10 @@ const DashboardPage: React.FC = () => {
 
         {/* ── Global filter bar ── */}
         <div style={{ background:'white', borderRadius:'12px', padding:'12px 16px', marginBottom:'14px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', display:'flex', flexWrap:'wrap', gap:'8px', alignItems:'center' }}>
-          <select style={inputStyle} value={filters.branch||''} onChange={e => setFilters(p => ({ ...p, branch: e.target.value||undefined }))}>
+          <select style={inputStyle} value={selectedBranchId} onChange={e => {
+              setSelectedBranchId(e.target.value);
+              setFilters(p => ({ ...p, branch: e.target.value||undefined }));
+            }}>
             <option value="">All Branches</option>
             {branches.map(b => <option key={b.branchId} value={b.branchId}>{b.branchName}</option>)}
           </select>
@@ -459,8 +484,8 @@ const DashboardPage: React.FC = () => {
             <option value="">All Services</option>
             {['Loans','Savings','Insurance','Leasing'].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <button style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background:LOLC_BLUE, color:'white', fontSize:'13px', fontWeight:600, cursor:'pointer', fontFamily:"'Inter', sans-serif" }} onClick={() => { loadData(); loadFeedback(); }}>Apply</button>
-          <button style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #E2E8F0', background:'white', color:'#555', fontSize:'13px', cursor:'pointer', fontFamily:"'Inter', sans-serif" }} onClick={() => { setFilters({}); setSearchTerm(''); setCurrentPage(1); }}>Reset</button>
+          <button style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background:LOLC_BLUE, color:'white', fontSize:'13px', fontWeight:600, cursor:'pointer', fontFamily:"'Inter', sans-serif" }} onClick={() => { loadData(); loadTrends(); loadRatingDist(); loadServiceDist(); loadFeedback(); }}>Apply</button>
+          <button style={{ padding:'7px 14px', borderRadius:'8px', border:'1px solid #E2E8F0', background:'white', color:'#555', fontSize:'13px', cursor:'pointer', fontFamily:"'Inter', sans-serif" }} onClick={() => { setFilters({}); setSearchTerm(''); setCurrentPage(1); setSelectedBranchId(''); }}>Reset</button>
           <button style={{ padding:'7px 14px', borderRadius:'8px', border:'none', background:'#10b981', color:'white', fontSize:'13px', fontWeight:600, cursor:'pointer', fontFamily:"'Inter', sans-serif", marginLeft:'auto' }} onClick={handleExport} disabled={isExporting}>
             {isExporting ? 'Exporting...' : '⬇ Export CSV'}
           </button>
@@ -786,6 +811,15 @@ const DashboardPage: React.FC = () => {
       </div>
 
       <FeedbackModal feedback={selectedFeedback} onClose={() => setSelectedFeedback(null)} />
+      {/* Footer */}
+      <div style={{
+        borderTop: '1px solid #E2E8F0', padding: '14px 28px',
+        textAlign: 'center', background: '#F2F2F8',
+      }}>
+        <p style={{ fontSize: '12px', color: '#aaa', margin: 0, letterSpacing: '0.3px' }}>
+          2026 Powered By LOLC Technologies Ltd
+        </p>
+      </div>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -800,4 +834,3 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
-

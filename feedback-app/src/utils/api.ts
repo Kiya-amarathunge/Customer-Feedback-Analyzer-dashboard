@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { FeedbackFormData, SubmitFeedbackResponse } from '../types';
+import { FeedbackFormData, SubmitFeedbackResponse } from '../types/index.ts';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 

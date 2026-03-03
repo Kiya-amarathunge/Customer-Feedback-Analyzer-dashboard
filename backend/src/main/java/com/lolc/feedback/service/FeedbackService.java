@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,14 +37,12 @@ public class FeedbackService {
 
     // ── Submit feedback ────────────────────────────────────────────────────────
     public FeedbackResponseDto submitFeedback(FeedbackRequestDto request, String ipAddress) {
-        // Rate limiting
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
         long recentCount = feedbackRepository.countByIpAddressAndCreatedAtAfter(ipAddress, oneHourAgo);
         if (recentCount >= 20) {
             throw new RuntimeException("Rate limit exceeded. Please try again later.");
         }
 
-        // Resolve branch name from DB
         String branchName = "Unknown Branch";
         if (request.getBranchId() != null && !request.getBranchId().isBlank()) {
             branchName = branchRepository.findById(request.getBranchId())
@@ -69,60 +68,48 @@ public class FeedbackService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        FeedbackResponse saved = feedbackRepository.save(feedback);
-        return toDto(saved);
+        return toDto(feedbackRepository.save(feedback));
     }
 
     // ── Get all feedback with real filtering ───────────────────────────────────
-    // Supports: branchId, serviceType, rating, search (in branchName or comments), page, size
+    // branchId: MongoDB branchId field (ObjectId string)
+    // serviceType: e.g. "Loans", "Savings"
+    // rating: overallRating exact match (1-5)
+    // search: case-insensitive match on branchName or additionalComments
     public Page<FeedbackResponseDto> getAllFeedback(
-            String branchId,
-            String serviceType,
-            Integer rating,
-            String search,
-            int page,
-            int size) {
+            String branchId, String serviceType, Integer rating, String search, int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        // Build dynamic MongoDB query
-        Query query = new Query();
+        List<Criteria> criteriaList = new ArrayList<>();
 
-        // Branch filter
-        if (branchId != null && !branchId.isBlank()) {
-            query.addCriteria(Criteria.where("branchId").is(branchId));
-        }
+        if (branchId != null && !branchId.isBlank())
+            criteriaList.add(Criteria.where("branchId").is(branchId));
 
-        // Service type filter
-        if (serviceType != null && !serviceType.isBlank()) {
-            query.addCriteria(Criteria.where("serviceType").is(serviceType));
-        }
+        if (serviceType != null && !serviceType.isBlank())
+            criteriaList.add(Criteria.where("serviceType").is(serviceType));
 
-        // Rating filter — matches overallRating exactly
-        if (rating != null) {
-            query.addCriteria(Criteria.where("overallRating").is(rating));
-        }
+        if (rating != null)
+            criteriaList.add(Criteria.where("overallRating").is(rating));
 
-        // Search — matches branchName or additionalComments (case-insensitive)
         if (search != null && !search.isBlank()) {
-            Pattern searchPattern = Pattern.compile(Pattern.quote(search), Pattern.CASE_INSENSITIVE);
-            query.addCriteria(new Criteria().orOperator(
-                    Criteria.where("branchName").regex(searchPattern),
-                    Criteria.where("additionalComments").regex(searchPattern),
-                    Criteria.where("serviceType").regex(searchPattern)
+            Pattern p = Pattern.compile(Pattern.quote(search), Pattern.CASE_INSENSITIVE);
+            criteriaList.add(new Criteria().orOperator(
+                    Criteria.where("branchName").regex(p),
+                    Criteria.where("additionalComments").regex(p),
+                    Criteria.where("serviceType").regex(p)
             ));
         }
 
-        // Count total matching documents
+        Query query = new Query();
+        if (!criteriaList.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
+        }
+
         long total = mongoTemplate.count(query, FeedbackResponse.class);
-
-        // Apply pagination
         query.with(pageable);
-        List<FeedbackResponse> results = mongoTemplate.find(query, FeedbackResponse.class);
-
-        List<FeedbackResponseDto> dtos = results.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<FeedbackResponseDto> dtos = mongoTemplate.find(query, FeedbackResponse.class)
+                .stream().map(this::toDto).collect(Collectors.toList());
 
         return new PageImpl<>(dtos, pageable, total);
     }
@@ -133,7 +120,6 @@ public class FeedbackService {
                 .orElseThrow(() -> new RuntimeException("Feedback not found: " + id));
     }
 
-    // ── Convert model → DTO ────────────────────────────────────────────────────
     private FeedbackResponseDto toDto(FeedbackResponse f) {
         return FeedbackResponseDto.builder()
                 .id(f.getId())
