@@ -38,10 +38,10 @@ public class DataSeeder implements CommandLineRunner {
                     .username("admin")
                     .passwordHash(passwordEncoder.encode("Admin@2026"))
                     .email("admin@lolc.lk")
-                    .roles(Set.of("ROLE_ADMIN"))
                     .active(true)
                     .createdAt(LocalDateTime.now())
                     .build();
+            admin.setRoles(Set.of("ROLE_ADMIN"));
             adminUserRepository.save(admin);
             System.out.println("✅ Default admin user created: username=admin, password=Admin@2026");
         }
@@ -50,11 +50,11 @@ public class DataSeeder implements CommandLineRunner {
     private void seedBranches() {
         if (branchRepository.count() == 0) {
             List<Branch> branches = Arrays.asList(
-                Branch.builder().name("Colombo Main").location("Colombo").address("No. 100, Braybrooke Place, Colombo 02").phone("+94 11 2 357 555").active(true).build(),
-                Branch.builder().name("Kandy").location("Kandy").address("No. 18, Dalada Veediya, Kandy").phone("+94 81 2 234 567").active(true).build(),
-                Branch.builder().name("Galle").location("Galle").address("No. 45, Church Cross Street, Galle").phone("+94 91 2 234 567").active(true).build(),
-                Branch.builder().name("Negombo").location("Negombo").address("No. 12, Main Street, Negombo").phone("+94 31 2 234 567").active(true).build(),
-                Branch.builder().name("Kurunegala").location("Kurunegala").address("No. 7, Rajapihilla Road, Kurunegala").phone("+94 37 2 234 567").active(true).build()
+                    Branch.builder().name("Colombo Main").location("Colombo").address("No. 100, Braybrooke Place, Colombo 02").phone("+94 11 2 357 555").active(true).build(),
+                    Branch.builder().name("Kandy").location("Kandy").address("No. 18, Dalada Veediya, Kandy").phone("+94 81 2 234 567").active(true).build(),
+                    Branch.builder().name("Galle").location("Galle").address("No. 45, Church Cross Street, Galle").phone("+94 91 2 234 567").active(true).build(),
+                    Branch.builder().name("Negombo").location("Negombo").address("No. 12, Main Street, Negombo").phone("+94 31 2 234 567").active(true).build(),
+                    Branch.builder().name("Kurunegala").location("Kurunegala").address("No. 7, Rajapihilla Road, Kurunegala").phone("+94 37 2 234 567").active(true).build()
             );
             branchRepository.saveAll(branches);
             System.out.println("✅ Branches seeded: " + branches.size() + " branches");

@@ -1,13 +1,7 @@
 package com.lolc.feedback.model;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.index.Indexed;
+import jakarta.persistence.*;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,37 +9,45 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collection = "feedback_responses")
+@Entity
+@Table(name = "FEEDBACK_RESPONSES")
 public class FeedbackResponse {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "feedback_seq")
+    @SequenceGenerator(name = "feedback_seq", sequenceName = "FEEDBACK_SEQ", allocationSize = 1)
+    private Long id;
 
-    @Indexed
-    private String branchId;
+    @Column(name = "BRANCH_ID")
+    private Long branchId;
 
+    @Column(name = "BRANCH_NAME", length = 100)
     private String branchName;
 
-    private int customerServiceRating;   // 1-5
-    private int branchEnvironmentRating; // 1-5
-    private int recommendationRating;    // 1-5
-    private int overallRating;           // computed average
+    @Column(name = "CUSTOMER_SERVICE_RATING", nullable = false)
+    private int customerServiceRating;
 
+    @Column(name = "BRANCH_ENVIRONMENT_RATING", nullable = false)
+    private int branchEnvironmentRating;
+
+    @Column(name = "RECOMMENDATION_RATING", nullable = false)
+    private int recommendationRating;
+
+    @Column(name = "OVERALL_RATING", nullable = false)
+    private int overallRating;
+
+    @Column(name = "ADDITIONAL_COMMENTS", length = 1000)
     private String additionalComments;
 
-    private String serviceType; // Loans, Savings, Insurance, Leasing
+    @Column(name = "SERVICE_TYPE", length = 50)
+    private String serviceType;
 
-    @Indexed
-    private String ipAddress; // for rate limiting
+    @Column(name = "IP_ADDRESS", length = 50)
+    private String ipAddress;
 
-    private String language; // en, si, ta
+    @Column(name = "LANGUAGE", length = 5)
+    private String language;
 
-    @CreatedDate
-    @Indexed
+    @Column(name = "CREATED_AT", nullable = false)
     private LocalDateTime createdAt;
-
-    // Computed field helper
-    public int computeOverallRating() {
-        return (int) Math.round((customerServiceRating + branchEnvironmentRating + recommendationRating) / 3.0);
-    }
 }

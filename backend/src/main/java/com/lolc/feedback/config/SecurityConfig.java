@@ -23,7 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
+
 
 @Configuration
 @EnableWebSecurity
@@ -44,18 +44,22 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(HttpMethod.POST, "/api/feedback").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/branches").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                // Protected endpoints
-                .requestMatchers("/api/analytics/**").authenticated()
-                .requestMatchers("/api/responses/**").authenticated()
-                .requestMatchers("/api/admin/**").authenticated()
-                .anyRequest().authenticated()
-            )
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/branches").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers("/api/links/**").permitAll()
+                        .requestMatchers("/api/external/**").permitAll()
+                        // Protected endpoints
+                        .requestMatchers("/api/analytics/**").authenticated()
+                        .requestMatchers("/api/responses/**").authenticated()
+                        .requestMatchers("/api/admin/**").authenticated()
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }

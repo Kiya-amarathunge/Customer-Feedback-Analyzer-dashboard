@@ -20,3 +20,4 @@ public class BranchController {
         return ResponseEntity.ok(branchRepository.findByActiveTrue());
     }
 }
+

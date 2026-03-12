@@ -2,32 +2,24 @@ package com.lolc.feedback.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class FeedbackRequestDto {
 
-    @NotNull(message = "Customer service rating is required")
-    @Min(value = 1, message = "Rating must be between 1 and 5")
-    @Max(value = 5, message = "Rating must be between 1 and 5")
-    private Integer customerService;
+    private String branchId;    // numeric Oracle ID as string
+    private String branchName;  // custom typed branch name 
 
-    @NotNull(message = "Branch environment rating is required")
-    @Min(value = 1, message = "Rating must be between 1 and 5")
-    @Max(value = 5, message = "Rating must be between 1 and 5")
-    private Integer branchEnvironment;
+    @Min(1) @Max(5)
+    private int customerService;
 
-    @NotNull(message = "Recommendation rating is required")
-    @Min(value = 1, message = "Rating must be between 1 and 5")
-    @Max(value = 5, message = "Rating must be between 1 and 5")
-    private Integer recommendation;
+    @Min(1) @Max(5)
+    private int branchEnvironment;
+
+    @Min(1) @Max(5)
+    private int recommendation;
 
     private String additionalComments;
-
-    private String branchId;
-
     private String serviceType;
-
     private String language;
 }

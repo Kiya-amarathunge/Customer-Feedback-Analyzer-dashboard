@@ -1,12 +1,7 @@
 package com.lolc.feedback.model;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.index.Indexed;
+import jakarta.persistence.*;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -15,24 +10,42 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collection = "admin_users")
+@Entity
+@Table(name = "ADMIN_USERS")
 public class AdminUser {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "admin_seq")
+    @SequenceGenerator(name = "admin_seq", sequenceName = "ADMIN_USER_SEQ", allocationSize = 1)
+    private Long id;
 
-    @Indexed(unique = true)
+    @Column(name = "USERNAME", nullable = false, unique = true, length = 50)
     private String username;
 
+    @Column(name = "PASSWORD_HASH", nullable = false, length = 255)
     private String passwordHash;
 
-    @Indexed(unique = true)
+    @Column(name = "EMAIL", length = 100)
     private String email;
 
-    private Set<String> roles; // ROLE_ADMIN, ROLE_VIEWER
+    // Roles stored as comma-separated string e.g. "ROLE_ADMIN"
+    @Column(name = "ROLES", length = 255)
+    private String rolesString;
 
+    @Column(name = "ACTIVE", nullable = false)
     private boolean active;
 
-    private LocalDateTime lastLogin;
+    @Column(name = "CREATED_AT")
     private LocalDateTime createdAt;
+
+    // Helper to get roles as a Set (used by security layer)
+    @Transient
+    public Set<String> getRoles() {
+        if (rolesString == null || rolesString.isBlank()) return Set.of();
+        return Set.of(rolesString.split(","));
+    }
+
+    public void setRoles(Set<String> roles) {
+        this.rolesString = roles == null ? "" : String.join(",", roles);
+    }
 }

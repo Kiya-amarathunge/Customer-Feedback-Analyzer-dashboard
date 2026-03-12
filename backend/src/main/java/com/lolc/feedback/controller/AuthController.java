@@ -34,7 +34,7 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto request) {
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(401).body(Map.of("message", "Invalid username or password"));
@@ -50,10 +50,12 @@ public class AuthController {
                 .username(userDetails.getUsername())
                 .build());
     }
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         // JWT is stateless - invalidation handled client-side
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
+
 }
+
+

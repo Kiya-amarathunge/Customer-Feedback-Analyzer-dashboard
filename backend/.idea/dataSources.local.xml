@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="dataSourceStorageLocal" created-in="IU-253.31033.145">
+    <data-source name="xe@localhost" uuid="74b4ad3a-9525-474f-97a9-70d5d4b5ed5d">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="ORACLE" />
+      <user-name>lolcadmin</user-name>
+      <schema-mapping />
+    </data-source>
+  </component>
+</project>

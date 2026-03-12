@@ -6,18 +6,17 @@ import com.lolc.feedback.model.Branch;
 import com.lolc.feedback.model.FeedbackResponse;
 import com.lolc.feedback.repository.BranchRepository;
 import com.lolc.feedback.repository.FeedbackResponseRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,11 +28,11 @@ public class FeedbackService {
     @Autowired
     private BranchRepository branchRepository;
 
-    @Autowired
-    private MongoTemplate mongoTemplate;
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     // ── Submit feedback ────────────────────────────────────────────────────────
     public FeedbackResponseDto submitFeedback(FeedbackRequestDto request, String ipAddress) {
@@ -44,10 +43,21 @@ public class FeedbackService {
         }
 
         String branchName = "Unknown Branch";
+        Long branchId = null;
         if (request.getBranchId() != null && !request.getBranchId().isBlank()) {
-            branchName = branchRepository.findById(request.getBranchId())
-                    .map(Branch::getName)
-                    .orElse("Unknown Branch");
+            try {
+                branchId = Long.parseLong(request.getBranchId());
+                Long finalBranchId = branchId;
+                branchName = branchRepository.findById(branchId)
+                        .map(Branch::getName)
+                        .orElse("Unknown Branch");
+            } catch (NumberFormatException e) {
+                // branchId was a typed custom name, not a numeric ID
+                branchName = request.getBranchId();
+                branchId = null;
+            }
+        } else if (request.getBranchName() != null && !request.getBranchName().isBlank()) {
+            branchName = request.getBranchName();
         }
 
         int overall = (int) Math.round(
@@ -55,7 +65,7 @@ public class FeedbackService {
         );
 
         FeedbackResponse feedback = FeedbackResponse.builder()
-                .branchId(request.getBranchId())
+                .branchId(branchId)
                 .branchName(branchName)
                 .customerServiceRating(request.getCustomerService())
                 .branchEnvironmentRating(request.getBranchEnvironment())
@@ -71,50 +81,68 @@ public class FeedbackService {
         return toDto(feedbackRepository.save(feedback));
     }
 
-    // ── Get all feedback with real filtering ───────────────────────────────────
-    // branchId: MongoDB branchId field (ObjectId string)
-    // serviceType: e.g. "Loans", "Savings"
-    // rating: overallRating exact match (1-5)
-    // search: case-insensitive match on branchName or additionalComments
+    // ── Get all feedback with filtering using JPA Criteria API ─────────────────
     public Page<FeedbackResponseDto> getAllFeedback(
             String branchId, String serviceType, Integer rating, String search, int page, int size) {
 
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+        // ── Count query ──
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<FeedbackResponse> countRoot = countQuery.from(FeedbackResponse.class);
+        countQuery.select(cb.count(countRoot));
+        countQuery.where(buildPredicates(cb, countRoot, branchId, serviceType, rating, search));
+        long total = entityManager.createQuery(countQuery).getSingleResult();
+
+        // ── Data query ──
+        CriteriaQuery<FeedbackResponse> dataQuery = cb.createQuery(FeedbackResponse.class);
+        Root<FeedbackResponse> root = dataQuery.from(FeedbackResponse.class);
+        dataQuery.where(buildPredicates(cb, root, branchId, serviceType, rating, search));
+        dataQuery.orderBy(cb.desc(root.get("createdAt")));
+
+        List<FeedbackResponse> results = entityManager.createQuery(dataQuery)
+                .setFirstResult(page * size)
+                .setMaxResults(size)
+                .getResultList();
+
+        List<FeedbackResponseDto> dtos = results.stream().map(this::toDto).collect(Collectors.toList());
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-
-        List<Criteria> criteriaList = new ArrayList<>();
-
-        if (branchId != null && !branchId.isBlank())
-            criteriaList.add(Criteria.where("branchId").is(branchId));
-
-        if (serviceType != null && !serviceType.isBlank())
-            criteriaList.add(Criteria.where("serviceType").is(serviceType));
-
-        if (rating != null)
-            criteriaList.add(Criteria.where("overallRating").is(rating));
-
-        if (search != null && !search.isBlank()) {
-            Pattern p = Pattern.compile(Pattern.quote(search), Pattern.CASE_INSENSITIVE);
-            criteriaList.add(new Criteria().orOperator(
-                    Criteria.where("branchName").regex(p),
-                    Criteria.where("additionalComments").regex(p),
-                    Criteria.where("serviceType").regex(p)
-            ));
-        }
-
-        Query query = new Query();
-        if (!criteriaList.isEmpty()) {
-            query.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
-        }
-
-        long total = mongoTemplate.count(query, FeedbackResponse.class);
-        query.with(pageable);
-        List<FeedbackResponseDto> dtos = mongoTemplate.find(query, FeedbackResponse.class)
-                .stream().map(this::toDto).collect(Collectors.toList());
-
         return new PageImpl<>(dtos, pageable, total);
     }
 
-    public FeedbackResponseDto getFeedbackById(String id) {
+    private Predicate[] buildPredicates(
+            CriteriaBuilder cb, Root<FeedbackResponse> root,
+            String branchId, String serviceType, Integer rating, String search) {
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (branchId != null && !branchId.isBlank()) {
+            try {
+                predicates.add(cb.equal(root.get("branchId"), Long.parseLong(branchId)));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (serviceType != null && !serviceType.isBlank()) {
+            predicates.add(cb.equal(root.get("serviceType"), serviceType));
+        }
+
+        if (rating != null) {
+            predicates.add(cb.equal(root.get("overallRating"), rating));
+        }
+
+        if (search != null && !search.isBlank()) {
+            String pattern = "%" + search.toLowerCase() + "%";
+            predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("branchName")), pattern),
+                    cb.like(cb.lower(root.get("additionalComments")), pattern),
+                    cb.like(cb.lower(root.get("serviceType")), pattern)
+            ));
+        }
+
+        return predicates.toArray(new Predicate[0]);
+    }
+
+    public FeedbackResponseDto getFeedbackById(Long id) {
         return feedbackRepository.findById(id)
                 .map(this::toDto)
                 .orElseThrow(() -> new RuntimeException("Feedback not found: " + id));
@@ -122,15 +150,15 @@ public class FeedbackService {
 
     private FeedbackResponseDto toDto(FeedbackResponse f) {
         return FeedbackResponseDto.builder()
-                .id(f.getId())
-                .date(f.getCreatedAt() != null ? f.getCreatedAt().format(DATE_FORMATTER) : "")
-                .time(f.getCreatedAt() != null ? f.getCreatedAt().format(TIME_FORMATTER) : "")
+                .id(f.getId() != null ? f.getId().toString() : null)
+                .date(f.getCreatedAt() != null ? f.getCreatedAt().format(DATE_FMT) : "")
+                .time(f.getCreatedAt() != null ? f.getCreatedAt().format(TIME_FMT) : "")
                 .customerService(f.getCustomerServiceRating())
                 .branchEnvironment(f.getBranchEnvironmentRating())
                 .recommendation(f.getRecommendationRating())
                 .additionalComments(f.getAdditionalComments())
                 .branch(f.getBranchName())
-                .branchId(f.getBranchId())
+                .branchId(f.getBranchId() != null ? f.getBranchId().toString() : "")
                 .serviceType(f.getServiceType())
                 .overallRating(f.getOverallRating())
                 .createdAt(f.getCreatedAt())

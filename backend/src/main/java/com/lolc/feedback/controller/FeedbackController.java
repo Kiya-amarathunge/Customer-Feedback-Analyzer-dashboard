@@ -1,7 +1,5 @@
 package com.lolc.feedback.controller;
 
-
-
 import com.lolc.feedback.dto.FeedbackRequestDto;
 import com.lolc.feedback.dto.FeedbackResponseDto;
 import com.lolc.feedback.service.FeedbackService;
@@ -21,14 +19,14 @@ public class FeedbackController {
     @Autowired
     private FeedbackService feedbackService;
 
-    // ── Public: submit feedback ────────────────────────────────────────────────
+    // Public: submit feedback from customer form
     @PostMapping("/feedback")
     public ResponseEntity<?> submitFeedback(
             @Valid @RequestBody FeedbackRequestDto request,
             HttpServletRequest httpRequest) {
         try {
-            String ipAddress = getClientIp(httpRequest);
-            FeedbackResponseDto response = feedbackService.submitFeedback(request, ipAddress);
+            String ip = getClientIp(httpRequest);
+            FeedbackResponseDto response = feedbackService.submitFeedback(request, ip);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Feedback submitted successfully",
@@ -42,8 +40,7 @@ public class FeedbackController {
         }
     }
 
-    // ── Admin: list responses with full filtering ──────────────────────────────
-    // Supports: branch (branchId), serviceType, rating, search, page, size
+    // Admin: list all responses with filters
     @GetMapping("/responses")
     public ResponseEntity<Page<FeedbackResponseDto>> getAllFeedback(
             @RequestParam(required = false) String branch,
@@ -57,13 +54,13 @@ public class FeedbackController {
         );
     }
 
-    // ── Admin: get single response ─────────────────────────────────────────────
+    // Admin: get single response by ID
     @GetMapping("/responses/{id}")
-    public ResponseEntity<FeedbackResponseDto> getFeedbackById(@PathVariable String id) {
+    public ResponseEntity<FeedbackResponseDto> getFeedbackById(@PathVariable Long id) {
         return ResponseEntity.ok(feedbackService.getFeedbackById(id));
     }
 
-    // ── Admin: export CSV ──────────────────────────────────────────────────────
+    // Admin: export CSV
     @GetMapping("/responses/export")
     public ResponseEntity<String> exportCsv(
             @RequestParam(required = false) String branch,
@@ -74,15 +71,16 @@ public class FeedbackController {
         StringBuilder csv = new StringBuilder();
         csv.append("Date,Time,Customer Service,Branch Environment,Recommendation,Overall,Branch,Service,Comments\n");
 
-        Page<FeedbackResponseDto> allPages = feedbackService.getAllFeedback(branch, serviceType, rating, search, 0, 100000);
-        allPages.getContent().forEach(f -> csv.append(String.format("%s,%s,%d,%d,%d,%d,%s,%s,\"%s\"\n",
-                f.getDate(), f.getTime(),
-                f.getCustomerService(), f.getBranchEnvironment(),
-                f.getRecommendation(), f.getOverallRating(),
-                f.getBranch(),
-                f.getServiceType() != null ? f.getServiceType() : "",
-                f.getAdditionalComments() != null ? f.getAdditionalComments().replace("\"", "\"\"") : ""
-        )));
+        feedbackService.getAllFeedback(branch, serviceType, rating, search, 0, 100000)
+                .getContent().forEach(f -> csv.append(String.format(
+                        "%s,%s,%d,%d,%d,%d,%s,%s,\"%s\"\n",
+                        f.getDate(), f.getTime(),
+                        f.getCustomerService(), f.getBranchEnvironment(),
+                        f.getRecommendation(), f.getOverallRating(),
+                        f.getBranch(),
+                        f.getServiceType() != null ? f.getServiceType() : "",
+                        f.getAdditionalComments() != null ? f.getAdditionalComments().replace("\"", "\"\"") : ""
+                )));
 
         return ResponseEntity.ok()
                 .header("Content-Type", "text/csv")
@@ -90,12 +88,9 @@ public class FeedbackController {
                 .body(csv.toString());
     }
 
-    // ── Helper ─────────────────────────────────────────────────────────────────
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
         return request.getRemoteAddr();
     }
 }

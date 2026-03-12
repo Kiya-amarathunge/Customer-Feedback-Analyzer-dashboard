@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -18,8 +17,7 @@ public class AnalyticsService {
     @Autowired
     private FeedbackResponseRepository feedbackRepository;
 
-    // ── Summary ────────────────────────────────────────────────────────────────
-    // No branch filter on summary — it is always global
+    // ── Summary — always global ────────────────────────────────────────────────
     public AnalyticsSummaryDto getSummary() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime thisMonthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -31,25 +29,19 @@ public class AnalyticsService {
         List<FeedbackResponse> lastMonth = feedbackRepository.findByCreatedAtBetween(lastMonthStart, lastMonthEnd);
 
         long totalFeedback = all.size();
-
-        double avgRating = all.stream()
-                .mapToInt(FeedbackResponse::getOverallRating)
-                .average().orElse(0.0);
+        double avgRating   = all.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0.0);
 
         long promoters  = all.stream().filter(f -> f.getRecommendationRating() == 5).count();
         long detractors = all.stream().filter(f -> f.getRecommendationRating() <= 2).count();
         int nps = totalFeedback > 0
-                ? (int) Math.round(((double)(promoters - detractors) / totalFeedback) * 100)
-                : 0;
+                ? (int) Math.round(((double)(promoters - detractors) / totalFeedback) * 100) : 0;
 
-        double thisAvg   = thisMonth.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0);
-        double lastAvg   = lastMonth.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0);
-        double ratingChange = Math.round((thisAvg - lastAvg) * 10.0) / 10.0;
+        double thisAvg    = thisMonth.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0);
+        double lastAvg    = lastMonth.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0);
+        double ratingChange = round2(thisAvg - lastAvg);
+        double countChange  = lastMonth.isEmpty() ? 0
+                : round2(((double)(thisMonth.size() - lastMonth.size()) / lastMonth.size()) * 100);
 
-        double countChange = lastMonth.isEmpty() ? 0
-                : Math.round(((double)(thisMonth.size() - lastMonth.size()) / lastMonth.size()) * 1000.0) / 10.0;
-
-        // NPS change: compute last month NPS vs this month NPS
         long thisPromoters  = thisMonth.stream().filter(f -> f.getRecommendationRating() == 5).count();
         long thisDetractors = thisMonth.stream().filter(f -> f.getRecommendationRating() <= 2).count();
         int thisNps = thisMonth.isEmpty() ? 0
@@ -60,33 +52,26 @@ public class AnalyticsService {
         int lastNps = lastMonth.isEmpty() ? 0
                 : (int) Math.round(((double)(lastPromoters - lastDetractors) / lastMonth.size()) * 100);
 
-        double npsChange = thisNps - lastNps;
-
         return AnalyticsSummaryDto.builder()
                 .totalFeedback(totalFeedback)
-                .averageRating(Math.round(avgRating * 10.0) / 10.0)
+                .averageRating(round2(avgRating))
                 .npsScore(nps)
                 .responseRate(totalFeedback > 0 ? 100.0 : 0.0)
                 .totalFeedbackChange(countChange)
                 .averageRatingChange(ratingChange)
-                .npsScoreChange(npsChange)
+                .npsScoreChange((double)(thisNps - lastNps))
                 .responseRateChange(countChange)
                 .build();
     }
 
-    // ── Trends ─────────────────────────────────────────────────────────────────
-    // Supports fromMonth and toMonth in format "YYYY-MM"
-    // branchId is optional — if provided, only shows data for that branch
+    // ── Trends — fromMonth/toMonth as YYYY-MM, optional branchId ──────────────
     public List<Map<String, Object>> getTrends(String fromMonth, String toMonth, String branchId) {
         List<Map<String, Object>> trends = new ArrayList<>();
 
-        // Parse fromMonth / toMonth e.g. "2026-01"
         YearMonth from = (fromMonth != null && !fromMonth.isBlank())
                 ? YearMonth.parse(fromMonth) : YearMonth.of(2026, 1);
-        YearMonth to = (toMonth != null && !toMonth.isBlank())
+        YearMonth to   = (toMonth != null && !toMonth.isBlank())
                 ? YearMonth.parse(toMonth) : YearMonth.now();
-
-        // Ensure from is not after to
         if (from.isAfter(to)) from = to;
 
         String[] monthNames = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
@@ -98,44 +83,41 @@ public class AnalyticsService {
 
             List<FeedbackResponse> monthData = feedbackRepository.findByCreatedAtBetween(monthStart, monthEnd);
 
-            // Filter by branch if specified
             if (branchId != null && !branchId.isBlank()) {
-                final String bid = branchId;
-                monthData = monthData.stream()
-                        .filter(f -> bid.equals(f.getBranchId()))
-                        .collect(Collectors.toList());
+                try {
+                    Long bid = Long.parseLong(branchId);
+                    monthData = monthData.stream()
+                            .filter(f -> bid.equals(f.getBranchId()))
+                            .collect(Collectors.toList());
+                } catch (NumberFormatException ignored) {}
             }
 
-            final List<FeedbackResponse> data = monthData;
+            List<FeedbackResponse> data = monthData;
             Map<String, Object> point = new LinkedHashMap<>();
-            // Label: "Jan 2026" style
             point.put("month", monthNames[current.getMonthValue() - 1] + " " + current.getYear());
-            point.put("customerService",  round2(data.stream().mapToInt(FeedbackResponse::getCustomerServiceRating).average().orElse(0)));
+            point.put("customerService",   round2(data.stream().mapToInt(FeedbackResponse::getCustomerServiceRating).average().orElse(0)));
             point.put("branchEnvironment", round2(data.stream().mapToInt(FeedbackResponse::getBranchEnvironmentRating).average().orElse(0)));
-            point.put("recommendation",   round2(data.stream().mapToInt(FeedbackResponse::getRecommendationRating).average().orElse(0)));
+            point.put("recommendation",    round2(data.stream().mapToInt(FeedbackResponse::getRecommendationRating).average().orElse(0)));
             point.put("count", data.size());
             trends.add(point);
 
             current = current.plusMonths(1);
         }
-
         return trends;
     }
 
-    // ── Rating Distribution ────────────────────────────────────────────────────
-    // branchId optional — if provided, only shows ratings for that branch
+    // ── Rating distribution — optional branchId ────────────────────────────────
     public List<Map<String, Object>> getRatingDistribution(String branchId) {
         List<FeedbackResponse> all = feedbackRepository.findAll();
 
-        // Filter by branch if provided
         if (branchId != null && !branchId.isBlank()) {
-            final String bid = branchId;
-            all = all.stream()
-                    .filter(f -> bid.equals(f.getBranchId()))
-                    .collect(Collectors.toList());
+            try {
+                Long bid = Long.parseLong(branchId);
+                all = all.stream().filter(f -> bid.equals(f.getBranchId())).collect(Collectors.toList());
+            } catch (NumberFormatException ignored) {}
         }
 
-        final List<FeedbackResponse> data = all;
+        List<FeedbackResponse> data = all;
         String[] categories = {"Customer Service", "Branch Environment", "Recommendation"};
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -163,22 +145,21 @@ public class AnalyticsService {
         return result;
     }
 
-    // ── Branch Performance ─────────────────────────────────────────────────────
-    // Returns all branches sorted by average rating descending
+    // ── Branch performance ─────────────────────────────────────────────────────
     public List<Map<String, Object>> getBranchPerformance() {
         List<FeedbackResponse> all = feedbackRepository.findAll();
-        Map<String, List<FeedbackResponse>> byBranch = new LinkedHashMap<>();
+        Map<Long, List<FeedbackResponse>> byBranch = new LinkedHashMap<>();
 
         for (FeedbackResponse f : all) {
-            String key = f.getBranchId() != null ? f.getBranchId() : f.getBranchName();
+            Long key = f.getBranchId() != null ? f.getBranchId() : -1L;
             byBranch.computeIfAbsent(key, k -> new ArrayList<>()).add(f);
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        byBranch.forEach((branchKey, feedbacks) -> {
+        byBranch.forEach((key, feedbacks) -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("branchName",    feedbacks.get(0).getBranchName());
-            item.put("branchId",      feedbacks.get(0).getBranchId() != null ? feedbacks.get(0).getBranchId() : "");
+            item.put("branchId",      feedbacks.get(0).getBranchId() != null ? feedbacks.get(0).getBranchId().toString() : "");
             item.put("averageRating", round2(feedbacks.stream().mapToInt(FeedbackResponse::getOverallRating).average().orElse(0)));
             item.put("totalFeedback", feedbacks.size());
             result.add(item);
@@ -188,20 +169,17 @@ public class AnalyticsService {
         return result;
     }
 
-    // ── Service Distribution ───────────────────────────────────────────────────
-    // branchId optional — if provided, only shows distribution for that branch
+    // ── Service distribution — optional branchId ───────────────────────────────
     public List<Map<String, Object>> getServiceDistribution(String branchId) {
         List<FeedbackResponse> all = feedbackRepository.findAll();
 
-        // Filter by branch if provided
         if (branchId != null && !branchId.isBlank()) {
-            final String bid = branchId;
-            all = all.stream()
-                    .filter(f -> bid.equals(f.getBranchId()))
-                    .collect(Collectors.toList());
+            try {
+                Long bid = Long.parseLong(branchId);
+                all = all.stream().filter(f -> bid.equals(f.getBranchId())).collect(Collectors.toList());
+            } catch (NumberFormatException ignored) {}
         }
 
-        // Always include all 4 service types even if count is 0
         Map<String, Long> counts = new LinkedHashMap<>();
         counts.put("Loans",     0L);
         counts.put("Savings",   0L);
@@ -223,7 +201,6 @@ public class AnalyticsService {
         return result;
     }
 
-    // ── Helper ─────────────────────────────────────────────────────────────────
     private double round2(double value) {
         return Math.round(value * 100.0) / 100.0;
     }

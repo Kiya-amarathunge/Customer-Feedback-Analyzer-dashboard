@@ -8,7 +8,7 @@ const LOLC_BLUE = '#0C004B';
 
 const SERVICE_TYPES = ['Loans', 'Savings', 'Insurance', 'Leasing'];
 
-// ── Compact searchable combobox (no separate card, used inline) ───────────────
+// ── Compact searchable combobox ───────────────────────────────────────────────
 const ComboBox: React.FC<{
   label: string;
   value: string;
@@ -80,13 +80,13 @@ const ComboBox: React.FC<{
           background: 'white', cursor: 'pointer',
           display: 'flex', alignItems: 'center',
           userSelect: 'none', transition: 'border-color 0.2s',
-          position: 'relative', minHeight: '42px',
+          position: 'relative', minHeight: '44px',
         }}>
-          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
             {shown || placeholder}
           </span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"
-            style={{ position:'absolute', right:10, transform: open?'rotate(180deg)':'none', transition:'0.2s' }}>
+            style={{ position: 'absolute', right: 10, transform: open ? 'rotate(180deg)' : 'none', transition: '0.2s' }}>
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
@@ -166,17 +166,15 @@ const FeedbackForm: React.FC = () => {
 
   const t = translations[lang];
 
-  // Load branches from backend on mount
   useEffect(() => {
     getBranches().then(data => setBranches(data || [])).catch(() => setBranches([]));
   }, []);
 
   const validate = (): boolean => {
     const e: Record<string, boolean> = {};
-    if (!formData.customerService)  e.customerService  = true;
+    if (!formData.customerService)   e.customerService   = true;
     if (!formData.branchEnvironment) e.branchEnvironment = true;
-    if (!formData.recommendation)   e.recommendation   = true;
-    // Branch valid if either an id is selected OR a name was typed
+    if (!formData.recommendation)    e.recommendation    = true;
     if (!formData.branchId && !formData.branchName) e.branchId = true;
     if (!serviceType) e.serviceType = true;
     setErrors(e);
@@ -213,7 +211,7 @@ const FeedbackForm: React.FC = () => {
     { key: 'recommendation'    as const, label: t.question3 },
   ];
 
-  const branchOptions = branches.map(b => ({ id: b.id, label: b.name }));
+  const branchOptions  = branches.map(b => ({ id: b.id, label: b.name }));
   const serviceOptions = SERVICE_TYPES.map(s => ({ id: s, label: s }));
 
   return (
@@ -225,68 +223,71 @@ const FeedbackForm: React.FC = () => {
 
       {/* ── Header ── */}
       <div style={{
-        width: '100%', background: LOLC_BLUE, padding: '18px 24px',
+        width: '100%', background: LOLC_BLUE, padding: '14px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         boxShadow: '0 2px 12px rgba(12,0,75,0.15)', position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: 38, height: 38, background: 'rgba(255,255,255,0.15)',
+            width: 36, height: 36, background: 'rgba(255,255,255,0.15)',
             borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0,
           }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4F4F4" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4F4F4" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
           </div>
-          <h1 style={{ color: '#F4F4F4', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+          <h1 style={{ color: '#F4F4F4', fontSize: '17px', fontWeight: 700, margin: 0 }}>
             LOLC {t.title}
           </h1>
         </div>
-        {/* Language switcher */}
+
+        {/* ── Language switcher: English + Indonesian only ── */}
         <div style={{ display: 'flex', gap: '6px' }}>
-          {(['en', 'si', 'ta'] as Language[]).map(l => (
+          {(['en', 'id'] as Language[]).map(l => (
             <button key={l} onClick={() => setLang(l)} style={{
-              padding: '5px 10px', borderRadius: '6px',
+              padding: '6px 12px', borderRadius: '6px',
               border: lang === l ? '1.5px solid #F4F4F4' : '1.5px solid rgba(255,255,255,0.3)',
               background: lang === l ? 'rgba(255,255,255,0.2)' : 'transparent',
-              color: '#F4F4F4', fontSize: '12px', fontWeight: lang === l ? 600 : 400,
+              color: '#F4F4F4', fontSize: '13px', fontWeight: lang === l ? 600 : 400,
               cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+              minWidth: 44, minHeight: 36,  // larger tap target for mobile
             }}>
-              {l === 'en' ? 'En' : l === 'si' ? 'සි' : 'த'}
+              {l === 'en' ? 'EN' : 'ID'}
             </button>
           ))}
         </div>
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ width: '100%', maxWidth: '480px', padding: '24px 16px 48px', flex: 1 }}>
+      <div style={{ width: '100%', maxWidth: '520px', padding: '20px 16px 48px', flex: 1 }}>
 
         {isSuccess ? (
           // ── Success screen ──
-          <div style={{ textAlign: 'center', padding: '56px 24px' }}>
+          <div style={{ textAlign: 'center', padding: '48px 24px' }}>
             <div style={{
-              width: 84, height: 84,
+              width: 80, height: 80,
               background: 'linear-gradient(135deg, #0C004B, #2D1B8E)',
               borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 24px',
               boxShadow: '0 8px 32px rgba(12,0,75,0.3)',
             }}>
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#F4F4F4" strokeWidth="2.5">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#F4F4F4" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </div>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#333', marginBottom: '12px' }}>
+            <h2 style={{ fontSize: '26px', fontWeight: 700, color: '#333', marginBottom: '12px' }}>
               {t.successTitle}
             </h2>
-            <p style={{ fontSize: '16px', color: '#666', lineHeight: 1.6, marginBottom: '32px' }}>
+            <p style={{ fontSize: '15px', color: '#666', lineHeight: 1.6, marginBottom: '32px' }}>
               {t.successMessage}
             </p>
             <button onClick={handleReset} style={{
               background: LOLC_BLUE, color: '#F4F4F4', border: 'none',
               borderRadius: '12px', padding: '14px 32px', fontSize: '16px',
               fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+              width: '100%', maxWidth: '280px',
             }}>
               {t.submitAnother}
             </button>
@@ -297,17 +298,17 @@ const FeedbackForm: React.FC = () => {
             {/* Banner */}
             <div style={{
               background: 'linear-gradient(135deg, #0C004B 0%, #1a0a7a 100%)',
-              borderRadius: '16px', padding: '20px', marginBottom: '20px',
+              borderRadius: '16px', padding: '18px 16px', marginBottom: '16px',
             }}>
               <p style={{ color: 'rgba(244,244,244,0.8)', fontSize: '13px', margin: '0 0 4px' }}>
                 {t.subtitle}
               </p>
-              <p style={{ color: '#F4F4F4', fontSize: '15px', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
+              <p style={{ color: '#F4F4F4', fontSize: '14px', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
                 {t.bannerText}
               </p>
             </div>
 
-            {/* Branch + Service — compact side-by-side card matching screenshot */}
+            {/* Branch + Service */}
             <div style={{
               background: 'white', borderRadius: '16px', padding: '16px',
               marginBottom: '16px',
@@ -316,7 +317,8 @@ const FeedbackForm: React.FC = () => {
                 : '0 2px 8px rgba(0,0,0,0.06)',
               border: (errors.branchId || errors.serviceType) ? '1px solid #fca5a5' : '1px solid transparent',
             }}>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              {/* Stack vertically on small screens, side by side on wider */}
+              <div className="combo-row" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 <ComboBox
                   label={t.branchLabel}
                   value={formData.branchId || ''}
@@ -354,7 +356,7 @@ const FeedbackForm: React.FC = () => {
             {/* Star rating questions */}
             {questions.map((q, idx) => (
               <div key={q.key} style={{
-                background: 'white', borderRadius: '16px', padding: '20px', marginBottom: '16px',
+                background: 'white', borderRadius: '16px', padding: '18px 16px', marginBottom: '16px',
                 boxShadow: errors[q.key] ? '0 0 0 2px #dc2626, 0 2px 8px rgba(0,0,0,0.06)' : '0 2px 8px rgba(0,0,0,0.06)',
                 border: errors[q.key] ? '1px solid #fca5a5' : '1px solid transparent',
               }}>
@@ -365,6 +367,7 @@ const FeedbackForm: React.FC = () => {
                     borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '13px', fontWeight: 700,
                     color: errors[q.key] ? '#dc2626' : LOLC_BLUE,
+                    flexShrink: 0,
                   }}>
                     {idx + 1}
                   </div>
@@ -393,7 +396,7 @@ const FeedbackForm: React.FC = () => {
 
             {/* Additional comments */}
             <div style={{
-              background: 'white', borderRadius: '16px', padding: '20px',
+              background: 'white', borderRadius: '16px', padding: '18px 16px',
               marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}>
               <label style={{ display: 'block', fontSize: '15px', fontWeight: 600, color: '#333', marginBottom: '4px' }}>
@@ -433,6 +436,7 @@ const FeedbackForm: React.FC = () => {
               fontFamily: "'Inter', sans-serif",
               boxShadow: isSubmitting ? 'none' : '0 4px 16px rgba(12,0,75,0.3)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              minHeight: '52px',
             }}>
               {isSubmitting ? (
                 <>
@@ -457,7 +461,6 @@ const FeedbackForm: React.FC = () => {
         )}
       </div>
 
-
       {/* Footer */}
       <div style={{
         width: '100%', borderTop: '1px solid #E2E8F0',
@@ -476,6 +479,20 @@ const FeedbackForm: React.FC = () => {
         textarea::placeholder { color: #A0AEC0; }
         input::placeholder { color: #A0AEC0; }
         button:active { transform: scale(0.98); }
+
+        /* ── Mobile optimisation ── */
+        @media (max-width: 480px) {
+          .combo-row { flex-direction: column !important; }
+          .combo-row > div { min-width: 100% !important; }
+        }
+
+        /* Prevent zoom on input focus (iOS) */
+        input, select, textarea {
+          font-size: 16px !important;
+        }
+
+        /* Smooth scrolling */
+        html { scroll-behavior: smooth; }
       `}</style>
     </div>
   );

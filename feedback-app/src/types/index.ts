@@ -20,7 +20,7 @@ export interface Branch {
   location: string;
 }
 
-export type Language = 'en' | 'si' | 'ta';
+export type Language = 'en' | 'id';
 
 export interface Translations {
   title: string;

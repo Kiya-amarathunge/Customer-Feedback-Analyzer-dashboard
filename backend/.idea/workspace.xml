@@ -5,21 +5,66 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3808addf-2e55-4f11-9ce9-6c3e3a84d4db" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/ExternalApiController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/FeedbackLinkController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/AddEmployeeDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/ExternalSendLinkDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/FeedbackLinkDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/LinkSummaryDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/SendLinkDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/Employee.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/FeedbackLink.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/EmployeeRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/FeedbackLinkRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/FeedbackLinkService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/NotifyLkService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../admin-dashboard/src/pages/DashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../admin-dashboard/src/pages/DashboardPage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/FeedbackApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/FeedbackApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/config/DataSeeder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/config/DataSeeder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/AnalyticsController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/AnalyticsController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/BranchController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/BranchController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/FeedbackController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/controller/FeedbackController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/AnalyticsSummaryDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/AnalyticsSummaryDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/FeedbackRequestDto.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/dto/FeedbackRequestDto.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/AdminUser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/AdminUser.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/Branch.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/Branch.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/FeedbackResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/model/FeedbackResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/AdminUserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/AdminUserRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/BranchRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/BranchRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/FeedbackResponseRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/repository/FeedbackResponseRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/AnalyticsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/AnalyticsService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/FeedbackService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/lolc/feedback/service/FeedbackService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 7
-}]]></component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="3A3PufYlpY7HkeIB8yGSOJyvelU" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -32,9 +77,11 @@
     "RequestMappingsPanelOrder1": "1",
     "RequestMappingsPanelWidth0": "75",
     "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "Spring Boot.FeedbackApplication.executor": "Run",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "dart.analysis.tool.window.visible": "false",
@@ -90,6 +137,8 @@
       <option name="presentableId" value="Default" />
       <updated>1771818505472</updated>
       <workItem from="1771818506620" duration="4994000" />
+      <workItem from="1772597058445" duration="4643000" />
+      <workItem from="1772708803520" duration="17711000" />
     </task>
     <servers />
   </component>
