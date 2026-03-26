@@ -26,6 +26,7 @@ interface FeedbackLink {
   employeeName: string;
   branchName: string;
   customerMobile: string;
+  referenceId: string;
   status: string;
   smsError: string;
   createdAt: string;
@@ -89,6 +90,12 @@ const SendLinksPage: React.FC = () => {
   const [newEmp, setNewEmp]         = useState({ employeeNumber: '', fullName: '', email: '', phone: '', branchName: '' });
   const [addEmpMsg, setAddEmpMsg]   = useState<string | null>(null);
 
+  // Helper — always reads the latest token from localStorage (key: authToken)
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+  });
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -96,9 +103,9 @@ const SendLinksPage: React.FC = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (empFilter)    params.append('employeeNumber', empFilter);
       const [s, l, e] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/feedback-links/summary`).then(r => r.json()),
-        fetch(`${API_BASE}/api/admin/feedback-links?${params}`).then(r => r.json()),
-        fetch(`${API_BASE}/api/admin/employees`).then(r => r.json()),
+        fetch(`${API_BASE}/api/admin/feedback-links/summary`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`${API_BASE}/api/admin/feedback-links?${params}`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`${API_BASE}/api/admin/employees`, { headers: authHeaders() }).then(r => r.json()),
       ]);
       setSummary(s); setLinks(l); setEmployees(e);
     } catch (e) { console.error(e); }
@@ -111,7 +118,7 @@ const SendLinksPage: React.FC = () => {
     if (!empNumber.trim() || !custMobile.trim()) { setSendResult({ success: false, message: 'Please fill in both fields.' }); return; }
     setSending(true); setSendResult(null);
     try {
-      const res  = await fetch(`${API_BASE}/api/admin/send-link`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeNumber: empNumber, customerMobile: custMobile }) });
+      const res  = await fetch(`${API_BASE}/api/admin/send-link`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ employeeNumber: empNumber, customerMobile: custMobile }) });
       const data = await res.json();
       setSendResult({ success: data.success, message: data.message });
       if (data.success) { setEmpNumber(''); setCustMobile(''); fetchAll(); }
@@ -121,7 +128,7 @@ const SendLinksPage: React.FC = () => {
 
   const handleAddEmployee = async () => {
     try {
-      const res  = await fetch(`${API_BASE}/api/admin/employees`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newEmp) });
+      const res  = await fetch(`${API_BASE}/api/admin/employees`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(newEmp) });
       const data = await res.json();
       if (data.success) { setAddEmpMsg('Employee added successfully.'); setNewEmp({ employeeNumber: '', fullName: '', email: '', phone: '', branchName: '' }); fetchAll(); }
       else setAddEmpMsg(data.message);
@@ -279,16 +286,16 @@ const SendLinksPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: C.navy }}>
-                {['Employee No', 'Employee Name', 'Branch', 'Customer Mobile', 'Sent At', 'Status', 'Action'].map(h => (
+                {['Employee No', 'Employee Name', 'Branch', 'Customer Mobile', 'Reference ID', 'Sent At', 'Status', 'Action'].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: C.white, fontWeight: 600, fontSize: '12px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: C.textLight }}>Loading...</td></tr>
+                <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: C.textLight }}>Loading...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: C.textLight }}>No records found.</td></tr>
+                <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: C.textLight }}>No records found.</td></tr>
               ) : paginated.map((l, i) => (
                 <React.Fragment key={l.id}>
                   <tr style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? C.white : '#fafbfc' }}
@@ -298,6 +305,7 @@ const SendLinksPage: React.FC = () => {
                     <td style={{ padding: '10px 14px', color: C.text, fontWeight: 500 }}>{l.employeeName}</td>
                     <td style={{ padding: '10px 14px', color: C.textLight }}>{l.branchName || '—'}</td>
                     <td style={{ padding: '10px 14px', color: C.text }}>{l.customerMobile}</td>
+                    <td style={{ padding: '10px 14px', color: C.textLight, fontSize: '12px' }}>{l.referenceId ? <span style={{ background: '#e8f7fa', color: '#055160', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{l.referenceId}</span> : '—'}</td>
                     <td style={{ padding: '10px 14px', color: C.textLight }}>{l.sentAt || l.createdAt || '—'}</td>
                     <td style={{ padding: '10px 14px' }}><Badge status={l.status} /></td>
                     <td style={{ padding: '10px 14px' }}>
@@ -309,9 +317,10 @@ const SendLinksPage: React.FC = () => {
                   </tr>
                   {expanded === l.id && (
                     <tr>
-                      <td colSpan={7} style={{ background: '#f0f9fb', padding: '14px 24px', borderBottom: `1px solid ${C.border}` }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                      <td colSpan={8} style={{ background: '#f0f9fb', padding: '14px 24px', borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
                           {[
+                            { label: 'Ref ID', value: l.referenceId },
                             { label: 'Created',   value: l.createdAt   },
                             { label: 'Sent',      value: l.sentAt      },
                             { label: 'Opened',    value: l.openedAt    },

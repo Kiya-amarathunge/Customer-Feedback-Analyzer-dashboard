@@ -53,7 +53,12 @@ const EmployeePerformancePage: React.FC = () => {
   const ROWS = 10;
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/admin/employee-performance`)
+    fetch(`${API_BASE}/api/admin/employee-performance`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
+      }
+    })
       .then(r => r.json()).then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

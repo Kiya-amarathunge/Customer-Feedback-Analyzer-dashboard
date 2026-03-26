@@ -28,30 +28,45 @@ public class FeedbackLinkService {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    // ── Admin: send single link ────────────────────────────────────────────────
+    // Reference ID prefix constant — all loan references must use this format
+    public static final String REFERENCE_PREFIX = "LOLC-REF-LOAN-APP-";
+
+    // ── Admin: send single link (no referenceId — manual send) ────────────────
     public FeedbackLinkDto sendLink(SendLinkDto request) {
         Employee employee = employeeRepository.findByEmployeeNumber(request.getEmployeeNumber())
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + request.getEmployeeNumber()));
 
         FeedbackLink link = createAndSend(
-                employee, request.getCustomerMobile(), null
+                employee, request.getCustomerMobile(), null, null
         );
         return toDto(link);
     }
 
-    // ── External API: send link with customerId ────────────────────────────────
+    // ── External API: send link with customerId + referenceId ─────────────────
     public FeedbackLinkDto sendLinkExternal(ExternalSendLinkDto request) {
         Employee employee = employeeRepository.findByEmployeeNumber(request.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + request.getEmployeeId()));
 
+        // Validate referenceId prefix format if provided
+        String referenceId = request.getReferenceId();
+        if (referenceId != null && !referenceId.isBlank()) {
+            if (!referenceId.startsWith(REFERENCE_PREFIX)) {
+                throw new RuntimeException(
+                        "Invalid referenceId format. Must start with: " + REFERENCE_PREFIX +
+                                " (e.g. LOLC-REF-LOAN-APP-12345)"
+                );
+            }
+        }
+
         FeedbackLink link = createAndSend(
-                employee, request.getCustomerMobile(), request.getCustomerId()
+                employee, request.getCustomerMobile(), request.getCustomerId(), referenceId
         );
         return toDto(link);
     }
 
     // ── Core: create record + send SMS ────────────────────────────────────────
-    private FeedbackLink createAndSend(Employee employee, String customerMobile, String customerId) {
+    private FeedbackLink createAndSend(Employee employee, String customerMobile,
+                                       String customerId, String referenceId) {
         // Generate unique token
         String token = UUID.randomUUID().toString().replace("-", "").substring(0, 24).toUpperCase();
 
@@ -63,6 +78,7 @@ public class FeedbackLinkService {
                 .customerMobile(customerMobile)
                 .customerId(customerId)
                 .branchName(employee.getBranchName())
+                .referenceId(referenceId)   // e.g. LOLC-REF-LOAN-APP-12345 or null
                 .status("PENDING")
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -194,7 +210,6 @@ public class FeedbackLinkService {
             long totalSent      = linkRepository.countByEmployeeId(emp.getId());
             long totalCompleted = completed.size();
 
-            // Get average rating from linked feedback responses
             double avgRating = completed.stream()
                     .map(l -> feedbackRepository.findById(l.getFeedbackResponseId()).orElse(null))
                     .filter(Objects::nonNull)
@@ -214,14 +229,13 @@ public class FeedbackLinkService {
             result.add(row);
         }
 
-        // Sort by average rating descending
         result.sort((a, b) -> Double.compare(
                 (double) b.get("averageRating"), (double) a.get("averageRating")));
 
         return result;
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Helper: map entity to DTO ─────────────────────────────────────────────
     private FeedbackLinkDto toDto(FeedbackLink l) {
         return FeedbackLinkDto.builder()
                 .id(l.getId())
@@ -231,6 +245,7 @@ public class FeedbackLinkService {
                 .branchName(l.getBranchName())
                 .customerMobile(l.getCustomerMobile())
                 .customerId(l.getCustomerId())
+                .referenceId(l.getReferenceId())
                 .status(l.getStatus())
                 .smsError(l.getSmsError())
                 .createdAt(l.getCreatedAt() != null ? l.getCreatedAt().format(FMT) : null)

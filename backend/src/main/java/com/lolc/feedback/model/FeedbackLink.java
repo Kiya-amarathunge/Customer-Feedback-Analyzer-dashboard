@@ -17,7 +17,7 @@ public class FeedbackLink {
     @SequenceGenerator(name = "feedback_link_seq", sequenceName = "FEEDBACK_LINK_SEQ", allocationSize = 1)
     private Long id;
 
-    // Unique token embedded in the URL - hidden from customer
+    // Unique token embedded in the SMS URL — customer never sees employee details
     @Column(name = "TOKEN", nullable = false, unique = true, length = 100)
     private String token;
 
@@ -39,6 +39,15 @@ public class FeedbackLink {
 
     @Column(name = "BRANCH_NAME", length = 100)
     private String branchName;
+
+    /**
+     * Reference ID linking feedback to a specific loan/transaction.
+     * Format: LOLC-REF-LOAN-APP-{applicationNumber}
+     * Example: LOLC-REF-LOAN-APP-12345
+     * Null when link is sent manually from the admin dashboard.
+     */
+    @Column(name = "REFERENCE_ID", length = 100)
+    private String referenceId;
 
     // PENDING → SENT → OPENED → COMPLETED / FAILED
     @Column(name = "STATUS", nullable = false, length = 20)
